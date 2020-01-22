@@ -1,0 +1,4 @@
+select>option[value="separator"]{
+    background: #cccccc;
+    font-size: 1px;
+}
