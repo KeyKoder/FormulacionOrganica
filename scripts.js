@@ -143,6 +143,9 @@ document.getElementById("generar").onclick = function(){
 	});
 	if(debug) console.log(radicals)
 	let name = prefixes[mainString.length-1];
+	
+	let notPutVocal = ["a","e","i","o","u","-","",undefined];
+
 	if(!containsNLink(visitedLinks,2) && !containsNLink(visitedLinks,3)){
 		name+="ano"
 	}
@@ -176,8 +179,6 @@ document.getElementById("generar").onclick = function(){
 		}
 		name+="-"+prefixesSpecial[triples.length-1]+"ino"
 	}
-
-	let notPutVocal = ["a","e","i","o","u","-","",undefined];
 
 	if(radicals.length > 0){
 		let radicalNames = ""
@@ -233,11 +234,14 @@ function getWeigths(link,lastWeight){
 	visitedLinks.push(link);
 	let start = getTileByUuid(link.start);
 	let end = getTileByUuid(link.end);
-	// Aprovechar y recolocar enlaces mal puestos en fixLinks
+	// Recolocar enlaces mal puestos en fixLinks
+	// Casos más o menos genéricos
 	if((getTilesByType("startAnalysis")[0].x > start.x && start.x < end.x && start.weight == null) ||
 	(getTilesByType("startAnalysis")[0].x < start.x && start.x > end.x) ||
 	(getTilesByType("startAnalysis")[0].y > start.y && start.y < end.y) ||
-	(getTilesByType("startAnalysis")[0].y < start.y && start.y > end.y && start.weight == null)){
+	(getTilesByType("startAnalysis")[0].y < start.y && start.y > end.y && start.weight == null) ||
+	// Caso particular (no es muy probable que ocurra)
+	(getTilesByType("startAnalysis")[0].x == start.x && getTilesByType("startAnalysis")[0].y != start.y)){
 		let tmp = link.start
 		link.start = link.end
 		link.end = tmp;
@@ -306,26 +310,43 @@ function findRadicals(string,indexToStart = 0){
 			let radical = []
 			if(!isTileInArray(string,getTileByUuid(link.start))){
 				if(debug) console.log("Start not in string")
-				radical.push(getTileByUuid(link.start));
-				radical = radical.concat(findRadicals(string.concat([getTileByUuid(link.start)]),string.length)[0])
+				radical.push(getTileByUuid(link.end));
+				let others = findRadicals(string.concat([getTileByUuid(link.start)]),string.length);
+				for(let other of others){
+					if(other && radical.indexOf(other) == -1)
+						radical = radical.concat(other.radical)
+				}
 				if(debug) console.log(radical)
 			}
 			if(!isTileInArray(string,getTileByUuid(link.end))){
 				if(debug) console.log("End not in string")
 				radical.push(getTileByUuid(link.end));
-				let other = findRadicals(string.concat([getTileByUuid(link.end)]),string.length)[0];
-				if(other)
-					radical = radical.concat(other.radical)
+				let others = findRadicals(string.concat([getTileByUuid(link.end)]),string.length);
+				for(let other of others){
+					if(other && radical.indexOf(other) == -1)
+						radical = radical.concat(other.radical)
+				}
 				if(debug) console.log(radical)
 			}
 
 			radical.removeAll(undefined);
-			if(radical.length > 0)
+			if(radical.length > 0){
+				let name = getSpecialRadical(radical);
 				radicals.push({tile:link.start,radical:radical})
+			}
 		}
 	}
-	console.log(radicals)
+	if(debug) console.log(radicals)
 	return radicals;
+}
+
+function getSpecialRadical(radical){
+	let startX = radical[0].x, startY = radical[0].y;
+	let relPositions = [];
+	for(let rad of radical){
+		relPositions.push([rad.x-startX,rad.y-startY])
+	}
+	console.log(startX,startY,relPositions)	
 }
 
 Array.prototype.removeAll = function(elt){
