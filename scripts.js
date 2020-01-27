@@ -111,7 +111,7 @@ function keyPressed(){
 		select.value = "etriple"
 	}else if(keyCode == 13){ // Enter
 		document.getElementById("generar").click();
-	}else if(key == " "){ // Enter
+	}else if(key == " "){ // Spacebar
 		select.value = "hidrocarburo";
 	}
 }
@@ -126,6 +126,7 @@ document.getElementById("generar").onclick = function(){
 		return;
 	}
 	let startTile = getTile(startingPoint.x,startingPoint.y).uuid;
+	fixLinks();
 	getWeigths(findLinksAttachedTo(startTile)[0],0);
 	
 	let highestWeightTiles = getHighestWeights();
@@ -213,20 +214,36 @@ document.getElementById("generar").onclick = function(){
 	document.getElementById("nombreCompuesto").value = name;
 }
 
+// Para recolocar links basados en que pos(start) > pos(end)
+function fixLinks(){
+	for(let link of links){
+		let start = getTileByUuid(link.start);
+		let end = getTileByUuid(link.end);
+		if(start.x > end.x){
+			let tmp = link.start
+			link.start = link.end
+			link.end = tmp;
+		}
+	}
+}
+
 // AKA Contar Carbonos
 function getWeigths(link,lastWeight){
 	if(isLinkInArray(visitedLinks,link)) return;
 	visitedLinks.push(link);
 	let start = getTileByUuid(link.start);
 	let end = getTileByUuid(link.end);
-	// Aprovechar y recolocar enlaces mal puestos
-	if((getTilesByType("startAnalysis")[0].x > start.x && start.x < end.x) ||
+	// Aprovechar y recolocar enlaces mal puestos en fixLinks
+	if((getTilesByType("startAnalysis")[0].x > start.x && start.x < end.x && start.weight == null) ||
 	(getTilesByType("startAnalysis")[0].x < start.x && start.x > end.x) ||
 	(getTilesByType("startAnalysis")[0].y > start.y && start.y < end.y) ||
-	(getTilesByType("startAnalysis")[0].y < start.y && start.y > end.y)){
+	(getTilesByType("startAnalysis")[0].y < start.y && start.y > end.y && start.weight == null)){
 		let tmp = link.start
 		link.start = link.end
 		link.end = tmp;
+		if(debug) console.log(`Flipping:
+		Start: (${start.x},${start.y}) => (${end.x},${end.y})
+		End: (${end.x},${end.y}) => (${start.x},${start.y})`)
 		
 		start = getTileByUuid(link.start);
 		end = getTileByUuid(link.end);
@@ -287,7 +304,6 @@ function findRadicals(string,indexToStart = 0){
 		let attachedLinks = findLinksAttachedTo(tile.uuid);
 		for(let link of attachedLinks){
 			let radical = []
-			// Checking for start is not necessary but better safe than sorry
 			if(!isTileInArray(string,getTileByUuid(link.start))){
 				if(debug) console.log("Start not in string")
 				radical.push(getTileByUuid(link.start));

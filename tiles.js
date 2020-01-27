@@ -74,13 +74,13 @@ function drawLinks(){
                 end.h--;
                 if(link.type == "edoble" || link.type == "etriple"){
                     line(end.x*gridSize-2.5,end.y*gridSize+gridSize/2+2.5,start.x*gridSize+gridSize+2.5,start.y*gridSize+gridSize/2+2.5)
-                start.h--;
-                end.h--;
+                    start.h--;
+                    end.h--;
                 }
                 if(link.type == "etriple"){
                     line(end.x*gridSize-2.5,end.y*gridSize+gridSize/2-2.5,start.x*gridSize+gridSize+2.5,start.y*gridSize+gridSize/2-2.5)
-                start.h--;
-                end.h--;
+                    start.h--;
+                    end.h--;
                 }
             }else if(start.x == end.x){
                 if(end.y<start.y){
@@ -93,13 +93,13 @@ function drawLinks(){
                 end.h--;
                 if(link.type == "edoble" || link.type == "etriple"){
                     line(end.x*gridSize+gridSize/2+2.5,end.y*gridSize+5,start.x*gridSize+gridSize/2+2.5,start.y*gridSize+gridSize-5)
-                start.h--;
-                end.h--;
+                    start.h--;
+                    end.h--;
                 }
                 if(link.type == "etriple"){
                     line(end.x*gridSize+gridSize/2-2.5,end.y*gridSize+5,start.x*gridSize+gridSize/2-2.5,start.y*gridSize+gridSize-5)
-                start.h--;
-                end.h--;
+                    start.h--;
+                    end.h--;
                 }
             }else{
                 links.splice(i,1);
