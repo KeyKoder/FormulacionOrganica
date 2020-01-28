@@ -50,6 +50,15 @@ function draw() {
 	}else{
 		validTiles = [];
 	}
+
+	
+	if(debug){
+		fill(0)
+		textSize(20)
+		text(x+","+y,40,40)
+		fill(128,0,0)
+		text(getTile(x,y).uuid,40,80)
+	}
 }
 
 function mouseReleased(){
@@ -139,7 +148,10 @@ document.getElementById("generar").onclick = function(){
 		// DESC -> b then a
 		let positionA = getTileByUuid(a.tile).weight+1;
 		let positionB = getTileByUuid(b.tile).weight+1;
-		return prefixes[b.radical.length].localeCompare(prefixes[a.radical.length]) || positionA < positionB;
+		if(!a.name && !b.name) return prefixes[b.radical.length].localeCompare(prefixes[a.radical.length]) || positionA < positionB;
+		if(a.name && !b.name) return prefixes[b.radical.length].localeCompare(a.name) || positionA < positionB;
+		if(!a.name && b.name) return b.name.localeCompare(prefixes[a.radical.length]) || positionA < positionB;
+		if(a.name && b.name) return b.name.localeCompare(a.name) || positionA < positionB;
 	});
 	if(debug) console.log(radicals)
 	let name = prefixes[mainString.length-1];
@@ -184,14 +196,20 @@ document.getElementById("generar").onclick = function(){
 		let radicalNames = ""
 		let lastRadicalLength = -1;
 		let currentRadicalName = "";
+		let index = 0;
 		for(let radical of radicals){
 			let position = getTileByUuid(radical.tile).weight+1;
 			if(lastRadicalLength != radical.radical.length){
 				if(lastRadicalLength != -1){
-					let prevRadicalCount = currentRadicalName.split("-").length-1;
-					let radicalType = prefixes[lastRadicalLength-1];
-					let radicalCountPrefix = prefixesSpecial[prevRadicalCount-1];
-					currentRadicalName+=radicalCountPrefix+(notPutVocal.indexOf(radicalType[0]) == -1 && notPutVocal.indexOf(radicalCountPrefix[radicalCountPrefix.length-1]) == -1 ? "a" : "")+radicalType+"il-"
+					let radicalCount = currentRadicalName.split("-").length-1;
+					let radicalCountPrefix = prefixesSpecial[radicalCount-1];
+					console.log(radicals[index-1])
+					if(radicals[index-1].name){
+						currentRadicalName+=radicalCountPrefix+(notPutVocal.indexOf(radicals[index-1].name[0]) == -1 && notPutVocal.indexOf(radicalCountPrefix[radicalCountPrefix.length-1]) == -1 ? "a" : "")+radicals[index-1].name+"-"
+					}else{
+						let radicalType = prefixes[lastRadicalLength-1];
+						currentRadicalName+=radicalCountPrefix+(notPutVocal.indexOf(radicalType[0]) == -1 && notPutVocal.indexOf(radicalCountPrefix[radicalCountPrefix.length-1]) == -1 ? "a" : "")+radicalType+"il-"
+					}
 				}
 				radicalNames+=currentRadicalName;
 				currentRadicalName = "";
@@ -200,14 +218,20 @@ document.getElementById("generar").onclick = function(){
 			}else{
 				currentRadicalName+=position+"-"
 			}
+			index++;
 		}
-		// Para el último radical que se sale del bucle sin añadirlo
-		radicalNames+=currentRadicalName;
-		let prevRadicalCount = currentRadicalName.split("-").length-1;
-		let radicalCountPrefix = prefixesSpecial[prevRadicalCount-1];
-		radicalNames+=prefixesSpecial[prevRadicalCount-1]+(notPutVocal.indexOf(prefixes[radicals[radicals.length-1].radical.length-1][0]) == -1 && notPutVocal.indexOf(radicalCountPrefix[radicalCountPrefix.length-1]) == -1 ? "a" : "")+prefixes[radicals[radicals.length-1].radical.length-1]+"il-"
-
-		name = radicalNames.substring(0,radicalNames.lastIndexOf("-")) + name;
+		let radicalCount = currentRadicalName.split("-").length-1;
+		let radicalCountPrefix = prefixesSpecial[radicalCount-1];
+		let lastRadical = radicals[radicals.length-1];
+		lastRadicalLength = lastRadical.radical.length;
+		if(lastRadical.name){
+			currentRadicalName+=radicalCountPrefix+(notPutVocal.indexOf(lastRadical.name[0]) == -1 && notPutVocal.indexOf(radicalCountPrefix[radicalCountPrefix.length-1]) == -1 ? "a" : "")+lastRadical.name
+		}else{
+			let radicalType = prefixes[lastRadicalLength-1];
+			currentRadicalName+=radicalCountPrefix+(notPutVocal.indexOf(radicalType[0]) == -1 && notPutVocal.indexOf(radicalCountPrefix[radicalCountPrefix.length-1]) == -1 ? "a" : "")+radicalType+"il"
+		}
+		radicalNames += currentRadicalName;
+		name = radicalNames + name;
 	}
 	while(name.match(/(\d+)-(\d+)/)){
 		name = name.replace(/(\d+)-(\d+)/,"$1,$2")
@@ -215,7 +239,7 @@ document.getElementById("generar").onclick = function(){
 	document.getElementById("nombreCompuesto").value = name;
 }
 
-// Para recolocar links basados en que pos(start) > pos(end)
+// Para recolocar links basados en que pos(start) > pos(end); pos(x) = posición de x
 function fixLinks(){
 	for(let link of links){
 		let start = getTileByUuid(link.start);
@@ -238,9 +262,10 @@ function getWeigths(link,lastWeight){
 	// Casos más o menos genéricos
 	if((getTilesByType("startAnalysis")[0].x > start.x && start.x < end.x && start.weight == null) ||
 	(getTilesByType("startAnalysis")[0].x < start.x && start.x > end.x) ||
+	(getTilesByType("startAnalysis")[0].x < start.x && start.x < end.x && start.weight == null) ||
 	(getTilesByType("startAnalysis")[0].y > start.y && start.y < end.y) ||
 	(getTilesByType("startAnalysis")[0].y < start.y && start.y > end.y && start.weight == null) ||
-	// Caso particular (no es muy probable que ocurra)
+	// Casos particulares (no es muy probable que ocurran)
 	(getTilesByType("startAnalysis")[0].x == start.x && getTilesByType("startAnalysis")[0].y != start.y)){
 		let tmp = link.start
 		link.start = link.end
@@ -332,7 +357,8 @@ function findRadicals(string,indexToStart = 0){
 			radical.removeAll(undefined);
 			if(radical.length > 0){
 				let name = getSpecialRadical(radical);
-				radicals.push({tile:link.start,radical:radical})
+				if(name != undefined) radicals.push({name:name,tile:link.start,radical:radical})
+				else radicals.push({tile:link.start,radical:radical})
 			}
 		}
 	}
@@ -344,13 +370,33 @@ function getSpecialRadical(radical){
 	let startX = radical[0].x, startY = radical[0].y;
 	let relPositions = [];
 	for(let rad of radical){
-		relPositions.push([rad.x-startX,rad.y-startY])
+		relPositions.push([Math.abs(rad.x-startX),Math.abs(rad.y-startY)])
 	}
-	console.log(startX,startY,relPositions)	
+	if(relPositions.containsArray([0,0]) &&
+	relPositions.containsArray([1,0]) &&
+	relPositions.containsArray([0,1]) &&
+	relPositions.length == 3){
+		return "isopropil";
+	}
 }
 
 Array.prototype.removeAll = function(elt){
 	while(this.indexOf(elt) != -1){
 		this.splice(this.indexOf(elt),1);
 	}
+}
+
+Array.prototype.containsArray = function(arr){
+	for(let elt of this){
+		if(elt.length == arr.length){
+			let equals = true;
+			for(let i=0;i<elt.length;i++){
+				if(elt[i] != arr[i]){
+					equals = false;
+				}
+			}
+			if(equals) return true;
+		}
+	}
+	return false;
 }
