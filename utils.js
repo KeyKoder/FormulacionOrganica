@@ -179,3 +179,13 @@ function getLinksByType(type){
     }
     return matchingLinks;
 }
+
+function getLinksByTypeIn(arr,type){
+    let matchingLinks = [];
+    for(let link of arr){
+        if(link.type === type){
+            matchingLinks.push(link);
+        }
+    }
+    return matchingLinks;
+}

@@ -139,8 +139,9 @@ document.getElementById("generar").onclick = function(){
 	getWeigths(findLinksAttachedTo(startTile)[0],0);
 	
 	let highestWeightTiles = getHighestWeights();
-	let mainString = getMainString(highestWeightTiles);
+	let {string:mainString, links:mainStringLinks} = getMainString(highestWeightTiles);
 	mainString.reverse();
+	mainStringLinks.reverse();
 	let radicals = findRadicals(mainString);
 	// Original from https://stackoverflow.com/questions/10630766/how-to-sort-an-array-based-on-the-length-of-each-element
 	radicals.sort(function(a, b){
@@ -148,21 +149,18 @@ document.getElementById("generar").onclick = function(){
 		// DESC -> b then a
 		let positionA = getTileByUuid(a.tile).weight+1;
 		let positionB = getTileByUuid(b.tile).weight+1;
-		if(!a.name && !b.name) return prefixes[b.radical.length].localeCompare(prefixes[a.radical.length]) || positionA < positionB;
-		if(a.name && !b.name) return prefixes[b.radical.length].localeCompare(a.name) || positionA < positionB;
-		if(!a.name && b.name) return b.name.localeCompare(prefixes[a.radical.length]) || positionA < positionB;
-		if(a.name && b.name) return b.name.localeCompare(a.name) || positionA < positionB;
+		return a.name.localeCompare(b.name) || positionA < positionB;
 	});
 	if(debug) console.log(radicals)
 	let name = prefixes[mainString.length-1];
 	
 	let notPutVocal = ["a","e","i","o","u","-","",undefined];
 
-	if(!containsNLink(visitedLinks,2) && !containsNLink(visitedLinks,3)){
+	if(!containsNLink(mainStringLinks,2) && !containsNLink(mainStringLinks,3)){
 		name+="ano"
 	}
-	if(containsNLink(visitedLinks,2)){
-		let doubles = getLinksByType("edoble");
+	if(containsNLink(mainStringLinks,2)){
+		let doubles = getLinksByTypeIn(mainStringLinks,"edoble");
 		doubles.sort(function(a, b){
 			// ASC  -> a then b
 			// DESC -> b then a
@@ -170,14 +168,17 @@ document.getElementById("generar").onclick = function(){
 			let positionB = mainString.indexOf(getTileByUuid(b.start))+1;
 			return positionA < positionB;
 		});
-		for(let link of doubles){
-			let position = mainString.indexOf(getTileByUuid(link.start))+1;
-			name+="-"+position
+		if(mainString.length > 2){
+			for(let link of doubles){
+				let position = mainString.indexOf(getTileByUuid(link.start))+1;
+				name+=position+","
+			}
 		}
-		name+="-"+prefixesSpecial[doubles.length-1]+"eno"
+		if(containsNLink(mainStringLinks,3)) name+=prefixesSpecial[doubles.length-1]+"en"
+		else name+=prefixesSpecial[doubles.length-1]+"eno"
 	}
-	if(containsNLink(visitedLinks,3)){
-		let triples = getLinksByType("etriple");
+	if(containsNLink(mainStringLinks,3)){
+		let triples = getLinksByTypeIn(mainStringLinks,"etriple");
 		triples.sort(function(a, b){
 			// ASC  -> a then b
 			// DESC -> b then a
@@ -185,57 +186,44 @@ document.getElementById("generar").onclick = function(){
 			let positionB = mainString.indexOf(getTileByUuid(b.start))+1;
 			return positionA < positionB;
 		});
-		for(let link of triples){
-			let position = mainString.indexOf(getTileByUuid(link.start))+1;
-			name+="-"+position
+		if(mainString.length > 2){
+			for(let link of triples){
+				let position = mainString.indexOf(getTileByUuid(link.start))+1;
+				name+=position+","
+			}
 		}
-		name+="-"+prefixesSpecial[triples.length-1]+"ino"
+		name+=prefixesSpecial[triples.length-1]+"ino"
 	}
 
 	if(radicals.length > 0){
-		let radicalNames = ""
-		let lastRadicalLength = -1;
-		let currentRadicalName = "";
-		let index = 0;
-		for(let radical of radicals){
-			let position = getTileByUuid(radical.tile).weight+1;
-			if(lastRadicalLength != radical.radical.length){
-				if(lastRadicalLength != -1){
-					let radicalCount = currentRadicalName.split("-").length-1;
-					let radicalCountPrefix = prefixesSpecial[radicalCount-1];
-					console.log(radicals[index-1])
-					if(radicals[index-1].name){
-						currentRadicalName+=radicalCountPrefix+(notPutVocal.indexOf(radicals[index-1].name[0]) == -1 && notPutVocal.indexOf(radicalCountPrefix[radicalCountPrefix.length-1]) == -1 ? "a" : "")+radicals[index-1].name+"-"
-					}else{
-						let radicalType = prefixes[lastRadicalLength-1];
-						currentRadicalName+=radicalCountPrefix+(notPutVocal.indexOf(radicalType[0]) == -1 && notPutVocal.indexOf(radicalCountPrefix[radicalCountPrefix.length-1]) == -1 ? "a" : "")+radicalType+"il-"
+		let radicalNames = "";
+		let lastName = radicals[0].name;
+		let radicalCount = -1;
+		for(let radical of radicals.concat({stop:true})){
+			if(!radical.stop){
+				if(lastName != radical.name){
+					if(radicalCount != -1){
+						radicalNames += prefixesSpecial[radicalCount]+lastName+"-";
+						lastName = radical.name;
+						radicalCount = -1;
 					}
 				}
-				radicalNames+=currentRadicalName;
-				currentRadicalName = "";
-				currentRadicalName+=position+"-"
-				lastRadicalLength = radical.radical.length;
+				radicalNames += (getTileByUuid(radical.tile).weight+1)+","
+				radicalCount++;
 			}else{
-				currentRadicalName+=position+"-"
+				radicalNames += prefixesSpecial[radicalCount]+lastName;
+				lastName = radical.name;
+				radicalCount = 0;
 			}
-			index++;
 		}
-		let radicalCount = currentRadicalName.split("-").length-1;
-		let radicalCountPrefix = prefixesSpecial[radicalCount-1];
-		let lastRadical = radicals[radicals.length-1];
-		lastRadicalLength = lastRadical.radical.length;
-		if(lastRadical.name){
-			currentRadicalName+=radicalCountPrefix+(notPutVocal.indexOf(lastRadical.name[0]) == -1 && notPutVocal.indexOf(radicalCountPrefix[radicalCountPrefix.length-1]) == -1 ? "a" : "")+lastRadical.name
-		}else{
-			let radicalType = prefixes[lastRadicalLength-1];
-			currentRadicalName+=radicalCountPrefix+(notPutVocal.indexOf(radicalType[0]) == -1 && notPutVocal.indexOf(radicalCountPrefix[radicalCountPrefix.length-1]) == -1 ? "a" : "")+radicalType+"il"
-		}
-		radicalNames += currentRadicalName;
+		if(radicalNames.endsWith("-"))
+			radicalNames = radicalNames.substring(0,radicalNames.length-1);
 		name = radicalNames + name;
 	}
-	while(name.match(/(\d+)-(\d+)/)){
-		name = name.replace(/(\d+)-(\d+)/,"$1,$2")
-	}
+	name = name.replace(/(\d+)-(\d+)/g,"$1,$2")
+	name = name.replace(/((\d[,]?)+)/g,"-$1-");
+	name = name.replace(/[-,]-/g,"-");
+	if(name.startsWith("-")) name = name.substring(1)
 	document.getElementById("nombreCompuesto").value = name;
 }
 
@@ -296,6 +284,7 @@ function getWeigths(link,lastWeight){
 
 function getMainString(tileArray){
 	let mainStrings = [];
+	let links = [];
 	for(let tile of tileArray){
 		if(debug) console.log(tile)
 		let thisString = [];
@@ -307,12 +296,14 @@ function getMainString(tileArray){
 			if(getTileByUuid(link.start).weight < minWeight){
 				minWeight = getTileByUuid(link.start).weight;
 				min = link.start;
+				links.push(link);
 			}
 		}
 		if(min == -1) continue;
-		let string = getMainString([getTileByUuid(min)])
+		let {string, links:otherLinks} = getMainString([getTileByUuid(min)])
 		if(string.length < 1000) thisString = thisString.concat(string)
 		else thisString.push(getTileByUuid(min))
+		links = links.concat(otherLinks)
 		mainStrings.push(thisString)
 		if(debug) console.log(thisString)
 	}
@@ -323,11 +314,12 @@ function getMainString(tileArray){
 			mainString = string;
 		}
 	}
-	return mainString;
+	return {string:mainString,links:links};
 }
 
 function findRadicals(string,indexToStart = 0){
 	let radicals = [];
+	let links = [];
 	for(let i=indexToStart;i<string.length;i++){
 		let tile = string[i];
 		let attachedLinks = findLinksAttachedTo(tile.uuid);
@@ -338,10 +330,16 @@ function findRadicals(string,indexToStart = 0){
 				radical.push(getTileByUuid(link.end));
 				let others = findRadicals(string.concat([getTileByUuid(link.start)]),string.length);
 				for(let other of others){
-					if(other && radical.indexOf(other) == -1)
+					if(other && radical.indexOf(other.radical) == -1)
 						radical = radical.concat(other.radical)
+					
+					if(other && radical.indexOf(other.links) == -1)
+						links = links.concat(other.links)
 				}
 				if(debug) console.log(radical)
+				if(!isLinkInArray(links,link)){
+					links.push(link)
+				}
 			}
 			if(!isTileInArray(string,getTileByUuid(link.end))){
 				if(debug) console.log("End not in string")
@@ -350,15 +348,23 @@ function findRadicals(string,indexToStart = 0){
 				for(let other of others){
 					if(other && radical.indexOf(other) == -1)
 						radical = radical.concat(other.radical)
+
+					if(other && radical.indexOf(other.links) == -1)
+						links = links.concat(other.links)
 				}
 				if(debug) console.log(radical)
+				if(!isLinkInArray(links,link)){
+					links.push(link)
+				}
 			}
 
 			radical.removeAll(undefined);
 			if(radical.length > 0){
-				let name = getSpecialRadical(radical);
-				if(name != undefined) radicals.push({name:name,tile:link.start,radical:radical})
-				else radicals.push({tile:link.start,radical:radical})
+				let rad = {tile:link.start,radical:radical,links:links};
+				let name = getSpecialRadical(rad);
+				if(name != undefined)
+					rad.name = name;
+				radicals.push(rad)
 			}
 		}
 	}
@@ -367,9 +373,9 @@ function findRadicals(string,indexToStart = 0){
 }
 
 function getSpecialRadical(radical){
-	let startX = radical[0].x, startY = radical[0].y;
+	let startX = radical.radical[0].x, startY = radical.radical[0].y;
 	let relPositions = [];
-	for(let rad of radical){
+	for(let rad of radical.radical){
 		relPositions.push([Math.abs(rad.x-startX),Math.abs(rad.y-startY)])
 	}
 	if(relPositions.containsArray([0,0]) &&
@@ -378,6 +384,46 @@ function getSpecialRadical(radical){
 	relPositions.length == 3){
 		return "isopropil";
 	}
+	
+	let name = "";
+	let radicalType = prefixes[radical.radical.length-1];
+	name+=radicalType
+	if(containsNLink(radical.links,2)){
+		let doubles = getLinksByTypeIn(radical.links,"edoble");
+		doubles.sort(function(a, b){
+			// ASC  -> a then b
+			// DESC -> b then a
+			let positionA = radical.radical.indexOf(getTileByUuid(a.start))+1;
+			let positionB = radical.radical.indexOf(getTileByUuid(b.start))+1;
+			return positionA < positionB;
+		});
+		if(radical.radical.length > 2){
+			for(let link of doubles){
+				let position = radical.radical.indexOf(getTileByUuid(link.start))+1;
+				name+=position
+			}
+		}
+		name+=prefixesSpecial[doubles.length-1]+"en"
+	}
+	if(containsNLink(radical.links,3)){
+		let triples = getLinksByTypeIn(radical.links,"etriple");
+		triples.sort(function(a, b){
+			// ASC  -> a then b
+			// DESC -> b then a
+			let positionA = radical.radical.indexOf(getTileByUuid(a.start))+1;
+			let positionB = radical.radical.indexOf(getTileByUuid(b.start))+1;
+			return positionA < positionB;
+		});
+		if(radical.radical.length > 2){
+			for(let link of triples){
+				let position = radical.radical.indexOf(getTileByUuid(link.start))+1;
+				name+=position+","
+			}	
+		}
+		name+=prefixesSpecial[triples.length-1]+"in"
+	}
+	name+="il";
+	if(name) return name;
 }
 
 Array.prototype.removeAll = function(elt){
