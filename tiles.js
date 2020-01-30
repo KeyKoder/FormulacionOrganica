@@ -16,6 +16,17 @@ function drawTile(tile){
             fill(255)
             text(tile.weight,x,y);
         }
+    }else if(tile.type == "halogeno"){
+        fill(0)
+        let x=tile.x*gridSize+gridSize/2-3, y=tile.y*gridSize+gridSize/2;
+        text(tile.subtype,x,y);
+        textSize(10)
+        if(tile.weight != null && debug){
+            fill(0,0,255,50);
+            rect(tile.x*gridSize,tile.y*gridSize,gridSize,gridSize)
+            fill(255)
+            text(tile.weight,x,y);
+        }
     }else if(tile.type == "linkstart"){
         fill(0,128,0,50);
         rect(tile.x*gridSize,tile.y*gridSize,gridSize,gridSize)

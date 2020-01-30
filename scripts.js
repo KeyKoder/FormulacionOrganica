@@ -64,11 +64,18 @@ function draw() {
 function mouseReleased(){
 	let type = document.getElementById("type").value, select = document.getElementById("type");
     if((validTiles.length == 0 && x>=0 && x<=cols && y>=0 && y<=rows) || (validTiles.length > 0 && isValid(x,y))){
-        if(mouseButton == "left" && getTile(x,y) == -1 && ["esimple","edoble","etriple"].indexOf(type) == -1){
+		if(mouseButton == "left" && getTile(x,y) == -1 && ["esimple","edoble","etriple"].indexOf(type) == -1 && type == "halogeno"){
             let tile = {
                 x: x,
 				y: y,
-				h:4,
+				type: type,
+				subtype: document.getElementById("halogeno").value
+            }
+			grid.push(tile);
+		}else if(mouseButton == "left" && getTile(x,y) == -1 && ["esimple","edoble","etriple"].indexOf(type) == -1){
+            let tile = {
+                x: x,
+				y: y,
 				type: type
             }
 			grid.push(tile);
@@ -122,7 +129,10 @@ function keyPressed(){
 		document.getElementById("generar").click();
 	}else if(key == " "){ // Spacebar
 		select.value = "hidrocarburo";
+	}else if(key == "h"){
+		select.value = "halogeno";
 	}
+	select.onchange()	
 }
 
 document.getElementById("generar").onclick = function(){
@@ -221,8 +231,11 @@ document.getElementById("generar").onclick = function(){
 		name = radicalNames + name;
 	}
 	name = name.replace(/(\d+)-(\d+)/g,"$1,$2")
+	console.log(name)
 	name = name.replace(/((\d[,]?)+)/g,"-$1-");
+	console.log(name)
 	name = name.replace(/[-,]-/g,"-");
+	console.log(name)
 	if(name.startsWith("-")) name = name.substring(1)
 	document.getElementById("nombreCompuesto").value = name;
 }
@@ -265,20 +278,24 @@ function getWeigths(link,lastWeight){
 		start = getTileByUuid(link.start);
 		end = getTileByUuid(link.end);
 	}
-	if(start.weight == null)
+	if(start.weight == null && start.type == "hidrocarburo")
 		start.weight = lastWeight;
 	
-	if(end.weight == null)
+	if(end.weight == null && end.type == "hidrocarburo")
 		end.weight = lastWeight+1;
-	for(let attachedLink of findLinksAttachedTo(link.start)){
-		if(isLinkInArray(visitedLinks,attachedLink)) continue;
-		
-		getWeigths(attachedLink,start.weight)
+	if(start.type == "hidrocarburo"){
+		for(let attachedLink of findLinksAttachedTo(link.start)){
+			if(isLinkInArray(visitedLinks,attachedLink)) continue;
+			
+			getWeigths(attachedLink,start.weight)
+		}
 	}
-	for(let attachedLink of findLinksAttachedTo(link.end)){
-		if(isLinkInArray(visitedLinks,attachedLink)) continue;
-		
-		getWeigths(attachedLink,end.weight)
+	if(end.type == "hidrocarburo"){
+		for(let attachedLink of findLinksAttachedTo(link.end)){
+			if(isLinkInArray(visitedLinks,attachedLink)) continue;
+			
+			getWeigths(attachedLink,end.weight)
+		}
 	}
 }
 
@@ -375,6 +392,7 @@ function findRadicals(string,indexToStart = 0){
 function getSpecialRadical(radical){
 	let startX = radical.radical[0].x, startY = radical.radical[0].y;
 	let relPositions = [];
+	let type = radical.radical[0].type;
 	for(let rad of radical.radical){
 		relPositions.push([Math.abs(rad.x-startX),Math.abs(rad.y-startY)])
 	}
@@ -386,43 +404,56 @@ function getSpecialRadical(radical){
 	}
 	
 	let name = "";
-	let radicalType = prefixes[radical.radical.length-1];
-	name+=radicalType
-	if(containsNLink(radical.links,2)){
-		let doubles = getLinksByTypeIn(radical.links,"edoble");
-		doubles.sort(function(a, b){
-			// ASC  -> a then b
-			// DESC -> b then a
-			let positionA = radical.radical.indexOf(getTileByUuid(a.start))+1;
-			let positionB = radical.radical.indexOf(getTileByUuid(b.start))+1;
-			return positionA < positionB;
-		});
-		if(radical.radical.length > 2){
-			for(let link of doubles){
-				let position = radical.radical.indexOf(getTileByUuid(link.start))+1;
-				name+=position
+	if(type == "hidrocarburo"){
+		let radicalType = prefixes[radical.radical.length-1];
+		name+=radicalType
+		if(containsNLink(radical.links,2)){
+			let doubles = getLinksByTypeIn(radical.links,"edoble");
+			doubles.sort(function(a, b){
+				// ASC  -> a then b
+				// DESC -> b then a
+				let positionA = radical.radical.indexOf(getTileByUuid(a.start))+1;
+				let positionB = radical.radical.indexOf(getTileByUuid(b.start))+1;
+				return positionA < positionB;
+			});
+			if(radical.radical.length > 2){
+				for(let link of doubles){
+					let position = radical.radical.indexOf(getTileByUuid(link.start))+1;
+					name+=position
+				}
 			}
+			name+=prefixesSpecial[doubles.length-1]+"en"
 		}
-		name+=prefixesSpecial[doubles.length-1]+"en"
-	}
-	if(containsNLink(radical.links,3)){
-		let triples = getLinksByTypeIn(radical.links,"etriple");
-		triples.sort(function(a, b){
-			// ASC  -> a then b
-			// DESC -> b then a
-			let positionA = radical.radical.indexOf(getTileByUuid(a.start))+1;
-			let positionB = radical.radical.indexOf(getTileByUuid(b.start))+1;
-			return positionA < positionB;
-		});
-		if(radical.radical.length > 2){
-			for(let link of triples){
-				let position = radical.radical.indexOf(getTileByUuid(link.start))+1;
-				name+=position+","
-			}	
+		if(containsNLink(radical.links,3)){
+			let triples = getLinksByTypeIn(radical.links,"etriple");
+			triples.sort(function(a, b){
+				// ASC  -> a then b
+				// DESC -> b then a
+				let positionA = radical.radical.indexOf(getTileByUuid(a.start))+1;
+				let positionB = radical.radical.indexOf(getTileByUuid(b.start))+1;
+				return positionA < positionB;
+			});
+			if(radical.radical.length > 2){
+				for(let link of triples){
+					let position = radical.radical.indexOf(getTileByUuid(link.start))+1;
+					name+=position+","
+				}	
+			}
+			name+=prefixesSpecial[triples.length-1]+"in"
 		}
-		name+=prefixesSpecial[triples.length-1]+"in"
+		name+="il";
+	}else if(type == "halogeno" && radical.radical.length == 1){
+		let subtype = radical.radical[0].subtype;
+		if(subtype == "F"){
+			name+="flúor"
+		}else if(subtype == "Cl"){
+			name+="cloro"
+		}else if(subtype == "Br"){
+			name+="bromo"
+		}else if(subtype == "I"){
+			name+="yodo"
+		}
 	}
-	name+="il";
 	if(name) return name;
 }
 
@@ -445,4 +476,11 @@ Array.prototype.containsArray = function(arr){
 		}
 	}
 	return false;
+}
+
+document.getElementById("type").onchange = function(e){
+	document.getElementById("halogeno").style.display = "none";
+	if(document.getElementById(this.value) != null){
+		document.getElementById(this.value).style.display = "inline-block";
+	}
 }

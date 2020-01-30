@@ -1,4 +1,4 @@
 select>option[value="separator"]{
-    background: #cccccc;
-    font-size: 1px;
+    background: #ccc;
+    font-size: 10px;
 }
